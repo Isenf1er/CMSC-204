@@ -1,0 +1,634 @@
+
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.net.UnknownHostException;
+
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+/**
+ * The client follows the Chat Protocol which is as follows.
+ * When the server sends "SUBMITNAME" the client replies with the
+ * desired screen name.  The server will keep sending "SUBMITNAME"
+ * requests as long as the client submits screen names that are
+ * already in use.  When the server sends a line beginning
+ * with "NAMEACCEPTED" the client is now allowed to start
+ * sending the server arbitrary strings to be broadcast to all
+ * chatters connected to the server.  When the server sends a
+ * line beginning with "MESSAGE " then all characters following
+ * this string should be displayed in its message area.
+ */
+public interface ChatClientExecInterface {
+    
+	/**
+     * Runs the client in its own thread
+     */
+    public void startClient() throws Exception;
+}
+
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.net.UnknownHostException;
+
+import javax.swing.JFrame;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+
+
+public interface ChatClientInterface extends Runnable {
+
+    /**
+     * Prompt for and return the desired screen name.
+     */
+    public String getName();
+
+    public int getServerPort();
+}
+
+
+
+
+
+import javafx.application.Application;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+
+
+public class ChatRoomDriverFX extends Application {
+	   
+	/**
+	 * The main method for the GUI for ChatRoomControlFX (JavaFX version)
+	 * Note: launch sets up GUI infrastructure and calls start(Stage stage)
+	 * This application was derived from one by Professor Ray Toal, Ph.D.,
+	 * Loyola MaryMount University, http://www.cs.lmu.edu/faculty
+	 * @param args not used
+	 */
+	public static void main(String[] args) {
+		launch(args);   
+	}
+		   
+	/**
+	 * Called from launch(...) of program's main method.  This is the starting point
+	 * of the GUI and the overall application
+	 * @param stage the top-level container of the JavaFX application.  
+	 * 				Provided by launch when it calls start(...)
+	 * @throws Exception
+	 */
+	@Override
+	public void start(Stage stage) throws Exception {
+		//call the main scene which is a BorderPane
+		ChatRoomMainFX root = new ChatRoomMainFX();
+        stage.setScene(new Scene(root, 500, 200));
+		// Set stage title and show the stage.
+		stage.setTitle("Chat Room Controller");
+		stage.show();
+
+	}
+}
+
+
+
+
+
+
+import javax.swing.JOptionPane;
+
+import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
+
+/**
+ * This panel is the basic panel, inside which other panels are placed.  
+ * @author ralexander
+ *
+ */
+//make the main panel's layout be a BorderPane
+public class ChatRoomMainFX extends BorderPane {
+
+	private static final int CHAT_ROOM_PORT = 5001;
+	private Button startClientButton, exitButton, startServerButton;
+	private Label titleLabel, instructionsLabel1, instructionsLabel2,instructionsLabel3, instructionsLabel4, instructionsLabel5;
+
+	private boolean serverStarted = false;
+
+	
+	/**
+	 * The MainPanel constructor sets up the entire GUI in this template.  
+	 * This application assumes that the server and clients will be run
+	 * on the same computer.
+	 */
+	ChatRoomMainFX() {
+		
+		Insets inset1 = new Insets(10); //for setting margins		
+		titleLabel = new Label("\tChat Room Controller");
+		titleLabel.setStyle("-fx-font-size: 20;");
+		instructionsLabel1 = new Label("\t\t1.  Start the server.");
+		instructionsLabel2 = new Label("\t\t2.  Start a client.");
+		instructionsLabel3 = new Label("\t\t3.  Enter a screen name in the client's GUI.");
+		instructionsLabel4 = new Label("\t\t4.  Start more clients.");
+		instructionsLabel5 = new Label("\t\t5.  Enter a message in a client's GUI.");
+		
+		VBox centerPane = new VBox();
+		centerPane.setAlignment(Pos.CENTER_LEFT);
+		centerPane.getChildren().addAll(titleLabel, instructionsLabel1, instructionsLabel2,
+				instructionsLabel3, instructionsLabel4, instructionsLabel5);
+		centerPane.setStyle("-fx-border-color: gray;");
+
+	    setCenter(centerPane);
+	    
+	    //create the buttons and add them to the bottom region
+	    //create the exitButton
+	    exitButton = new Button("_Exit");
+		//_ in label specifies that the next character is the mnemonic, ie, type Alt-m as a shortcut
+	    //this activates the mnemonic on exitButton when the Alt key is pressed
+	    exitButton.setMnemonicParsing(true);  
+	    exitButton.setTooltip(new Tooltip("Select to close the server, all clients, and the application"));
+	    //use a lambda expression for the EventHandler class for exitButton
+        exitButton.setOnAction(
+        		event -> {
+        		 System.out.println("Closing the server, all clients, and the application");
+            	 Platform.exit();
+                 System.exit(0);
+        		}
+        	);
+	    
+	    //create another button
+	    startClientButton = new Button("Start each _Client");
+	    startClientButton.setMnemonicParsing(true);  
+	    startClientButton.setTooltip(new Tooltip("Select this to start a Chat Room client. Can be selected multiple times."));
+	    //create a listener for the other button using a lambda expression
+	    startClientButton.setOnAction(event -> {
+	    	if (serverStarted)	{
+	    		System.out.println("Starting a new client at port: "+CHAT_ROOM_PORT);
+	    		ChatClientExec chatClientExec = new ChatClientExec(CHAT_ROOM_PORT);
+	    		try {
+					chatClientExec.startClient();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+	    	}
+	    	else JOptionPane.showMessageDialog(null, "Start the server first.");
+		});
+	    
+	    
+	    //create the mgrButton
+	    startServerButton = new Button("Start the _Server");
+	    startServerButton.setMnemonicParsing(true);  
+	    startServerButton.setTooltip(new Tooltip("Select this to start the Chat Room server - do this once only"));
+	    //create a listener for the startServerButton button using a lambda expression
+	    startServerButton.setOnAction(event -> {
+	    	if (serverStarted)	JOptionPane.showMessageDialog(null, "Server is already running - not restarted");
+	    	else {
+	    		serverStarted=true;
+	    		System.out.println("Starting the server at hostname localhost at port: "+CHAT_ROOM_PORT);
+	    		//create the ChatServer instance and start the server
+	    		ChatServerExec chatServerExec = new ChatServerExec(CHAT_ROOM_PORT);
+	    		chatServerExec.startServer();
+	    	}
+	    });
+	    
+	    HBox bottomBox = new HBox();
+	    HBox.setMargin(startClientButton, inset1);
+	    HBox.setMargin(startServerButton, inset1);
+	    HBox.setMargin(exitButton, inset1);
+	    bottomBox.getChildren().addAll( startServerButton, startClientButton, exitButton); // 
+	    setBottom(bottomBox);
+	    bottomBox.setAlignment(Pos.CENTER);
+		
+		
+
+	}
+}
+	
+
+
+
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.HashSet;
+import javax.swing.JOptionPane;
+
+//TODO STUDENT: edit the class header so that ChatServer can run in a thread
+public class ChatServer implements Runnable { 
+    private String name;
+    private Socket clientSocket;
+    private BufferedReader in;
+    private PrintWriter out;
+
+	ChatServer(int port) {
+		CHAT_ROOM_PORT = port;
+	}
+    
+    /**
+     * The port that the server listens on.
+     */
+    private static int CHAT_ROOM_PORT;
+
+    /**
+     * The set of all names of clients in the chat room.  Maintained
+     * so that we can check that new clients are not registering name
+     * already in use.
+     */
+    private static HashSet<String> names = new HashSet<String>();
+
+    /**
+     * The set of all the print writers for all the clients.  This
+     * set is kept so we can easily broadcast messages.
+     */
+    private static HashSet<PrintWriter> writers = new HashSet<PrintWriter>();
+	
+	//@Override
+	public void run() {
+        ServerSocket listener = null;
+		try {
+			//TODO STUDENT: create a server socket
+			listener = new ServerSocket(CHAT_ROOM_PORT);
+			System.out.println("The chat server is running.");
+            while (true) {	
+            	//TODO STUDENT: listen for a client to join, then setup input and output channels
+            	clientSocket = listener.accept();
+            	System.out.println("Client Accepted");
+            	in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            	out = new PrintWriter(clientSocket.getOutputStream(), true);
+                // Request a name from this client.  Keep requesting until
+                // a name is submitted that is not already used.  Note that
+                // checking for the existence of a name and adding the name
+                // must be done while locking the set of names.
+                name=null;
+                while (name==null) {
+                    out.println("SUBMITNAME");
+                    name = in.readLine();
+                    //add name to list of valid names if name!=null and name is not a duplicate
+                    if (name.equals("")) name=null;  //note: readLine() returns a string, so it returns "null", not null
+                    else if (name.equals("null")) name=null;
+                    else if (names.contains(name)) {
+                    	//JOptionPane.showMessageDialog(null, "Screen Name "+name+" is already in use.");
+                    	out.println("WRONGNAME");
+                    	Thread.sleep(100);
+                    	name=null;
+                    }
+                    else names.add(name);	                    
+                }
+                // Now that a successful name has been chosen, add the
+                // socket's print writer to the set of all writers so
+                // this client can receive broadcast messages and start a 
+                // new server thread to handle the client
+                out.println("NAMEACCEPTED");
+                writers.add(out);
+                ServerThreadForClient svrForClient = new ServerThreadForClient(in,out,name);
+                
+                Thread t = new Thread(svrForClient);
+                t.start();
+            }
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+            
+    private class ServerThreadForClient implements Runnable {
+    	BufferedReader in;
+    	PrintWriter out;
+    	String name;
+    	
+    	ServerThreadForClient (BufferedReader in, PrintWriter out, String name) {
+    		this.in =in;
+    		this.out =out;
+    		this.name= name;
+    	}
+    	
+    	@Override
+		public void run() {
+            // Accept messages from this client and broadcast them.
+            // Ignore other clients that cannot be broadcasted to.
+    		try {
+                while (true) {
+                    String input;
+					try {
+						input = in.readLine();
+					
+	                    if (input == null) {
+	                        return;
+	                    }
+	                    for (PrintWriter writer : writers) {
+	                        writer.println("MESSAGE " + name + ": " + input);
+	                    }
+	                } catch (IOException e) {
+						e.printStackTrace();
+					}
+                }
+    		}
+            finally {
+            // This client is going down!  Remove its name and its print
+            // writer from the sets, and close its socket.
+            if (name != null) {
+                names.remove(name);
+            }
+            if (out != null) {
+                writers.remove(out);
+            }
+            try {
+                clientSocket.close();
+            } catch (IOException e) {
+            }
+        }
+			
+	}
+    	
+   }
+    
+}
+
+
+
+
+
+
+import java.io.PrintWriter;
+import java.util.HashSet;
+
+
+/**
+ * A multithreaded chat room server.  When a client connects the
+ * server requests a screen name by sending the client the
+ * text "SUBMITNAME", and keeps requesting a name until
+ * a unique one is received.  After a client submits a unique
+ * name, the server acknowledges with "NAMEACCEPTED".  Then
+ * all messages from that client will be broadcast to all other
+ * clients that have submitted a unique screen name.  The
+ * broadcast messages are prefixed with "MESSAGE ".
+ * 
+ */
+public class ChatServerExec {
+
+    public ChatServerExec(int port) {
+    	CHAT_ROOM_PORT = port;
+	}
+
+    /**
+     * The port that the server listens on.
+     */
+    private static int CHAT_ROOM_PORT;
+    /**
+     * Starts an instance of a server in a thread so that GUI thread can continue to operate asynchronously
+     * @param port
+     */
+   public void startServer() {
+    	ChatServer server = new ChatServer(CHAT_ROOM_PORT);
+    	//TODO STUDENT: start a thread with server in it
+    	Thread thread = new Thread(server);
+    	thread.start();
+    }
+}
+
+
+
+
+/**
+ * A multithreaded chat room server.  
+ * The  chat server executive calls startServer, which runs 
+ * ChatServer in a thread, in order not to block the GUI.
+ * This top-level thread listens for a client to connect, 
+ * asks for the client's Screen Name, checks it for duplication,
+ * and if ok, starts a new thread by which the server will
+ * interact with this client. This thread allows the server
+ * to interact with many clients at once.  The names of all
+ * clients are kept in a field HashSet<String> names to allow
+ * checking for duplicate screen names, and the output streams 
+ * are kept in a field named HashSet<PrintWriter> writers, in order
+ * that each message can be retransmitted to all the clients.
+ * 
+ * When a client connects the
+ * server requests a screen name by sending the client the
+ * text "SUBMITNAME", and keeps requesting a name until
+ * a unique one is received.  After a client submits a unique
+ * name, the server acknowledges with "NAMEACCEPTED".  Then
+ * all messages from that client will be broadcast to all other
+ * clients that have submitted a unique screen name.  The
+ * broadcast messages are prefixed with "MESSAGE ".
+ * 
+ */
+public interface ChatServerExecInterface {
+
+    /**
+     * Starts an instance of a server in a thread so that GUI thread can continue to operate asynchronously
+     * @param port
+     */
+   public void startServer(int port);
+    
+}
+
+
+
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.net.UnknownHostException;
+
+import javafx.scene.Scene;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.BorderPane;
+//import javafx.stage.Stage;
+import javafx.stage.Stage;
+
+import javax.swing.JOptionPane;
+
+
+public class ChatClient implements Runnable, ChatClientInterface {
+	private static int CHAT_ROOM_PORT = 0;
+	boolean local =true;
+    BufferedReader in;
+    PrintWriter out = null;
+    BorderPane frame = new BorderPane();
+    TextField textField = new TextField();
+    TextArea messageArea = new TextArea();
+    Stage stage;
+    String myScreenName = "";
+    
+	ChatClient(int port) {
+		CHAT_ROOM_PORT = port;
+
+        // Layout GUI
+		stage = new Stage();
+		stage.setScene(new Scene(frame, 500, 200));
+		stage.setX(ChatClientExec.getClientX());
+		stage.setY(ChatClientExec.getClientY());
+		// Set stage title and show the stage.
+		stage.setTitle("Chat Client");
+		stage.show();
+        textField.setEditable(false);
+        messageArea.setEditable(false);
+        frame.setTop(textField); 
+        frame.setCenter(messageArea); 
+        frame.setVisible(true);
+        
+        /**
+         * Responds to pressing the enter key in the textfield by sending
+         * the contents of the text field to the server.    Then clear
+         * the text area in preparation for the next message.
+         */
+        textField.setOnAction(event -> {
+        			try {
+        				out.println(textField.getText());
+                        textField.setText("");
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+        });
+	}
+
+	/**
+     * Prompt for and return the address of the server.
+     */
+    private String getServerAddress() {
+    	return "localHost";
+    }
+
+    /**
+     * Prompt for and return the desired screen name.
+     */
+    public String getName() {
+        return JOptionPane.showInputDialog(
+            null,
+            "Choose a screen name:",
+            "Screen name selection",
+            JOptionPane.PLAIN_MESSAGE);
+    }
+
+    /**
+     * Connects to the server then enters the processing loop.
+     */
+    public void run() {
+		try {
+			//TODO STUDENT: create a client socket with server address and server port
+			Socket s = new Socket(getServerAddress(), CHAT_ROOM_PORT);
+			//Make connection and initialize streams;
+			//TODO STUDENT: setup input and output streams
+			in = new BufferedReader(new InputStreamReader(s.getInputStream()));
+			out = new PrintWriter(s.getOutputStream(), true);
+	        // Process all messages from server, according to the protocol.
+	        while (true) {
+	            String line = in.readLine();
+	            if (line.startsWith("SUBMITNAME")) {
+	            	System.out.println("client received SUBMITNAME");
+	            	myScreenName = getName();
+	                out.println(myScreenName);
+	            } else if (line.startsWith("NAMEACCEPTED")) {
+	            	System.out.println("client received NAMEACCEPTED");
+	                textField.setEditable(true);
+	            } else if (line.startsWith("WRONGNAME")) {
+	            	System.out.println("client received WRONGNAME");
+	            	JOptionPane.showMessageDialog(null, "Screen Name "+myScreenName+" is already in use.");
+	            } else if (line.startsWith("MESSAGE")) {
+	            	System.out.println("client received MESSAGE");
+	            	//MESSAGE " + name + ": " + input
+	                messageArea.appendText(line.substring(8) + "\n");
+	            }
+	        }
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+    }
+
+    public int getServerPort() {
+		return CHAT_ROOM_PORT;
+	}
+}
+
+
+
+
+/**
+ * The client follows the Chat Protocol which is as follows.
+ * When the server sends "SUBMITNAME" the client replies with the
+ * desired screen name.  The server will keep sending "SUBMITNAME"
+ * requests as long as the client submits screen names that are
+ * already in use.  When the server sends a line beginning
+ * with "NAMEACCEPTED" the client is now allowed to start
+ * sending the server arbitrary strings to be broadcast to all
+ * chatters connected to the server.  When the server sends a
+ * line beginning with "MESSAGE " then all characters following
+ * this string should be displayed in its message area.
+ */
+public class ChatClientExec implements ChatClientExecInterface {
+
+    private int CHAT_ROOM_PORT=0;
+
+    private static double clientX = 30.0;
+    private static double clientY = 10.0;
+    /**
+     * Constructs the client by laying out the GUI and registering a
+     * listener with the textfield so that pressing Return in the
+     * listener sends the textfield contents to the server.  Note
+     * however that the textfield is initially NOT editable, and
+     * only becomes editable AFTER the client receives the NAMEACCEPTED
+     * message from the server.
+     */
+    public ChatClientExec(int port) {
+    	CHAT_ROOM_PORT=port;
+    }
+    
+	/**
+     * Runs the client
+     */
+    public void startClient() throws Exception {
+    	setClientY(getClientY() + 50.0);
+    	setClientX(getClientX() + 50.0);
+    	ChatClient client = new ChatClient(CHAT_ROOM_PORT);
+    	//TODO STUDENT: create a thread with client in it
+    	Thread t = new Thread(client);
+    	t.start();
+    }
+
+	public static double getClientX() {
+		return clientX;
+	}
+
+	public static void setClientX(double clientX) {
+		ChatClientExec.clientX = clientX;
+	}
+
+	public static double getClientY() {
+		return clientY;
+	}
+
+	public static void setClientY(double clientY) {
+		ChatClientExec.clientY = clientY;
+	}
+
+
+}
